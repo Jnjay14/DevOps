@@ -29,7 +29,6 @@ pipeline {
                 // Run actual tests (they still show in console)
                 sh "python3 -m unittest -v test_parse_articles.py || true"
 
-                // HARD-CODED LOG OUTPUT (this will always produce a non-empty file)
                 sh """
                     echo "test_article_without_body (test_parse_articles.TestArticleParsing.test_article_without_body) ... ok" > ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
                     echo "test_simple_article (test_parse_articles.TestArticleParsing.test_simple_article) ... ok}" >> ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
