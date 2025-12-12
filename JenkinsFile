@@ -26,12 +26,16 @@ pipeline {
 
         stage('test') {
             steps {
-                // 3. Run unittest and save output to timestamped log in /tmp/newsflow-logs
-                 sh """
-                    python3 -m unittest -v test_parse_articles.py | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
+                sh """
+                    # Run unittest and redirect ALL output (stdout + stderr) to the log file
+                    python3 -m unittest -v test_parse_articles.py > ${LOG_DIR}/unittest-${env.TIMESTAMP}.log 2>&1
+
+                    # Also print the log to the Jenkins console so you can still see it
+                    cat ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
                 """
             }
         }
+
 
         stage('verify') {
             steps {
