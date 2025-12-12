@@ -1,5 +1,3 @@
-// Jenkinsfile
-
 pipeline {
     agent any
 
@@ -10,57 +8,56 @@ pipeline {
     stages {
         stage('init') {
             steps {
-                script {
-                    // 2. Environment check: ensure Python 3 is available
-                    sh 'python3 --version'
+                // 2. Environment check: ensure Python 3 is available
+                sh 'python3 --version'
 
-                    // Create timestamp for versioned filenames
+                // Create timestamp for versioned filenames
+                script {
                     env.TIMESTAMP = sh(
                         script: 'date +%Y%m%d%H%M%S',
                         returnStdout: true
                     ).trim()
-
-                    // Ensure log directory exists
-                    sh "mkdir -p ${LOG_DIR}"
                 }
+
+                // Ensure log directory exists
+                sh "mkdir -p ${LOG_DIR}"
             }
         }
 
         stage('test') {
             steps {
-                script {
-                    // 3. Run unittest and pipe output to a timestamped log file
-                    sh """
-                        python3 -m unittest -v test_parse_articles.py \
-                        | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
-                    """
-                }
+                // 3. Run unittest and save output to timestamped log in /tmp/newsflow-logs
+                sh """
+                    python3 -m unittest -v test_parse_articles.py \
+                    | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
+                """
             }
         }
 
         stage('verify') {
             steps {
                 script {
-                    // 3/4. Simple verification: check if tests finished with "OK"
-                    sh """
-                        grep -q "OK" ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
-                    """
+                    // Run grep but capture exit status explicitly
+                    int status = sh(
+                        script: "grep -q 'OK' ${LOG_DIR}/unittest-${env.TIMESTAMP}.log",
+                        returnStatus: true
+                    )
+
+                    if (status != 0) {
+                        // Fail pipeline with a clear message
+                        error "Tests did NOT finish with OK. Check log: ${LOG_DIR}/unittest-${env.TIMESTAMP}.log"
+                    }
                 }
             }
         }
 
         stage('archive') {
             steps {
-                script {
-                    // 4. Logs are already in /tmp/newsflow-logs with a timestamped filename
-                    // Copy the log into the workspace so Jenkins can archive it as an artifact
-                    sh """
-                        cp ${LOG_DIR}/unittest-${env.TIMESTAMP}.log .
-                    """
+                // 4. Copy log into workspace (so Jenkins can archive it)
+                sh "cp ${LOG_DIR}/unittest-${env.TIMESTAMP}.log ."
 
-                    // 5. Archive the timestamped log as a build artifact
-                    archiveArtifacts artifacts: "unittest-${env.TIMESTAMP}.log", fingerprint: true
-                }
+                // 5. Archive the timestamped log as an artifact
+                archiveArtifacts artifacts: "unittest-${env.TIMESTAMP}.log", fingerprint: true
             }
         }
     }
