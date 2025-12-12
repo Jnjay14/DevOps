@@ -1,0 +1,67 @@
+// Jenkinsfile
+
+pipeline {
+    agent any
+
+    environment {
+        LOG_DIR = "/tmp/newsflow-logs"
+    }
+
+    stages {
+        stage('init') {
+            steps {
+                script {
+                    // 2. Environment check: ensure Python 3 is available
+                    sh 'python3 --version'
+
+                    // Create timestamp for versioned filenames
+                    env.TIMESTAMP = sh(
+                        script: 'date +%Y%m%d%H%M%S',
+                        returnStdout: true
+                    ).trim()
+
+                    // Ensure log directory exists
+                    sh "mkdir -p ${LOG_DIR}"
+                }
+            }
+        }
+
+        stage('test') {
+            steps {
+                script {
+                    // 3. Run unittest and pipe output to a timestamped log file
+                    sh """
+                        python3 -m unittest -v test_parse_articles.py \
+                        | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
+                    """
+                }
+            }
+        }
+
+        stage('verify') {
+            steps {
+                script {
+                    // 3/4. Simple verification: check if tests finished with "OK"
+                    sh """
+                        grep -q "OK" ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
+                    """
+                }
+            }
+        }
+
+        stage('archive') {
+            steps {
+                script {
+                    // 4. Logs are already in /tmp/newsflow-logs with a timestamped filename
+                    // Copy the log into the workspace so Jenkins can archive it as an artifact
+                    sh """
+                        cp ${LOG_DIR}/unittest-${env.TIMESTAMP}.log .
+                    """
+
+                    // 5. Archive the timestamped log as a build artifact
+                    archiveArtifacts artifacts: "unittest-${env.TIMESTAMP}.log", fingerprint: true
+                }
+            }
+        }
+    }
+}
