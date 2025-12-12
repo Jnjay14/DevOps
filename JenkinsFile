@@ -27,8 +27,9 @@ pipeline {
         stage('test') {
             steps {
                 // 3. Run unittest and save output to timestamped log in /tmp/newsflow-logs
-                sh "python3 -m unittest -v test_parse_articles.py | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log"
-
+                 sh """
+                    python3 -m unittest -v test_parse_articles.py | tee ${LOG_DIR}/unittest-${env.TIMESTAMP}.log
+                """
             }
         }
 
